@@ -326,6 +326,10 @@ with st.sidebar:
         "- *Show me all available rivers*"
     )
     st.divider()
+    st.subheader("Supported Rivers")
+    river_list = sorted(list_rivers(), key=lambda r: r["river_name"])
+    st.markdown("\n".join(f"- {r['river_name']}" for r in river_list))
+    st.divider()
     st.caption("Rate limit: 20 requests / hour per session.")
 
 # ── Session state ─────────────────────────────────────────────────────────────
