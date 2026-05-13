@@ -92,8 +92,10 @@ TOOLS = [
         "name": "get_weather",
         "description": (
             "Fetch weather and precipitation data for a river's put-in coordinates. "
-            "Sources: NWS (current conditions + 24hr hourly forecast) and Open-Meteo "
-            "(observed precipitation for the past 24 hours). The two sources fail independently."
+            "Sources: NWS (current conditions + 7-day hourly forecast) and Open-Meteo "
+            "(observed precipitation for the past 24 hours + 7-day forecast). "
+            "Use this when the user asks about multi-day outlooks or upcoming rain. "
+            "The two sources fail independently."
         ),
         "input_schema": {
             "type": "object",

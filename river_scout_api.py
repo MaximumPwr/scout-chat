@@ -614,7 +614,7 @@ def get_weather(river_id: str) -> dict:
             "precip_last_1hr_in": None,
         },
         "precip_last_24hr_in": None,
-        "forecast_next_24hr": [],
+        "forecast_7day": [],
         "fetch_timestamp_utc": fetch_ts,
         "error_detail": None,
         "precip_error_detail": None,
@@ -663,7 +663,7 @@ def get_weather(river_id: str) -> dict:
             try:
                 resp = requests.get(forecast_url, headers=nws_headers, timeout=TIMEOUT)
                 if resp.status_code == 200:
-                    periods = resp.json().get("properties", {}).get("periods", [])[:24]
+                    periods = resp.json().get("properties", {}).get("periods", [])
                     forecast = []
                     for period in periods:
                         pop = period.get("probabilityOfPrecipitation") or {}
@@ -684,7 +684,7 @@ def get_weather(river_id: str) -> dict:
                             ),
                             "short_forecast": period.get("shortForecast"),
                         })
-                    base["forecast_next_24hr"] = forecast
+                    base["forecast_7day"] = forecast
                 else:
                     if base["error_detail"] is None:
                         base["error_detail"] = (
@@ -757,7 +757,7 @@ def get_weather(river_id: str) -> dict:
         om_url = (
             f"https://api.open-meteo.com/v1/forecast"
             f"?latitude={lat}&longitude={lon}"
-            f"&hourly=precipitation&past_days=1&forecast_days=0&timezone=UTC"
+            f"&hourly=precipitation&past_days=1&forecast_days=7&timezone=UTC"
         )
         resp = requests.get(om_url, timeout=TIMEOUT)
         if resp.status_code == 200:
@@ -810,7 +810,7 @@ def get_all_conditions(include_history: bool = False) -> list[dict]:
     Uses ThreadPoolExecutor(max_workers=8) so all 16 rivers are fetched in
     parallel — wall-clock time is roughly the same as fetching one river.
 
-    History arrays (stage_history_24hr, flow_history_24hr, forecast_next_24hr)
+    History arrays (stage_history_24hr, flow_history_24hr, forecast_7day)
     are stripped by default to keep the response compact for summary views.
     Pass include_history=True to retain them. Results are sorted by river name.
     Never raises exceptions.
@@ -826,7 +826,7 @@ def get_all_conditions(include_history: bool = False) -> list[dict]:
             if not include_history:
                 result["gauge"].pop("stage_history_24hr", None)
                 result["gauge"].pop("flow_history_24hr", None)
-                result["weather"].pop("forecast_next_24hr", None)
+                result["weather"].pop("forecast_7day", None)
             results.append(result)
 
     return sorted(results, key=lambda r: r["gauge"]["river_name"])
