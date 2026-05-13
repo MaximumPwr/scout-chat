@@ -614,6 +614,7 @@ def get_weather(river_id: str) -> dict:
             "precip_last_1hr_in": None,
         },
         "precip_last_24hr_in": None,
+        "precip_forecast_daily": [],
         "forecast_7day": [],
         "fetch_timestamp_utc": fetch_ts,
         "error_detail": None,
@@ -757,7 +758,7 @@ def get_weather(river_id: str) -> dict:
         om_url = (
             f"https://api.open-meteo.com/v1/forecast"
             f"?latitude={lat}&longitude={lon}"
-            f"&hourly=precipitation&past_days=1&forecast_days=7&timezone=UTC"
+            f"&hourly=precipitation&daily=precipitation_sum&past_days=1&forecast_days=7&timezone=UTC"
         )
         resp = requests.get(om_url, timeout=TIMEOUT)
         if resp.status_code == 200:
@@ -779,6 +780,22 @@ def get_weather(river_id: str) -> dict:
                     continue
 
             base["precip_last_24hr_in"] = round(total_mm / 25.4, 3)
+
+            # Daily precipitation forecast (today onward, in inches)
+            daily_times = om_data.get("daily", {}).get("time", [])
+            daily_precips = om_data.get("daily", {}).get("precipitation_sum", [])
+            today = datetime.now(timezone.utc).date()
+            daily_forecast = []
+            for d, p in zip(daily_times, daily_precips):
+                try:
+                    if datetime.fromisoformat(d).date() >= today and p is not None:
+                        daily_forecast.append({
+                            "date": d,
+                            "precip_in": round(p / 25.4, 3),
+                        })
+                except Exception:
+                    continue
+            base["precip_forecast_daily"] = daily_forecast
         else:
             base["precip_error_detail"] = (
                 f"Open-Meteo HTTP {resp.status_code}: {resp.text[:500]}"
