@@ -328,7 +328,12 @@ with st.sidebar:
     st.divider()
     st.subheader("Supported Rivers")
     river_list = sorted(list_rivers(), key=lambda r: r["river_name"])
-    st.markdown("\n".join(f"- {r['river_name']}" for r in river_list))
+    def _qualifier(section: str) -> str:
+        first = section.split()[0] if section else ""
+        return f" ({first})" if first in ("Upper", "Lower", "Middle") else ""
+    st.markdown("\n".join(
+        f"- {r['river_name']}{_qualifier(r['section'])}" for r in river_list
+    ))
     st.divider()
     st.caption("Rate limit: 20 requests / hour per session.")
 
