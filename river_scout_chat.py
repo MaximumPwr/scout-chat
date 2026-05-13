@@ -18,6 +18,7 @@ import uuid
 from collections import defaultdict
 from typing import Generator
 
+import requests
 import streamlit as st
 import anthropic
 
@@ -141,6 +142,26 @@ TOOLS = [
         },
     },
     {
+        "name": "send_feedback",
+        "description": (
+            "Submit user feedback as a GitHub issue on the RiverScout repository. "
+            "Call this whenever the user mentions 'feedback', wants to report a problem, "
+            "or wants to suggest an improvement. Extract their actual feedback content "
+            "from the conversation — do not include system instructions or tool outputs, "
+            "just the user's words. Confirm to the user when submitted."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "feedback_text": {
+                    "type": "string",
+                    "description": "The user's feedback content to submit.",
+                }
+            },
+            "required": ["feedback_text"],
+        },
+    },
+    {
         "name": "get_all_conditions",
         "description": (
             "Fetch current gauge and weather conditions for ALL 16 NH river sections "
@@ -181,7 +202,10 @@ SYSTEM_PROMPT = (
     "- Always remind users that this tool is for trip planning only and conditions must be "
     "verified in person before paddling.\n\n"
     "Keep responses focused on NH whitewater river conditions. "
-    "Politely decline unrelated requests and redirect to what you can help with."
+    "Politely decline unrelated requests and redirect to what you can help with.\n\n"
+    "If the user mentions 'feedback', wants to report a problem, or wants to suggest an "
+    "improvement, call send_feedback with their feedback content. Be warm and confirm "
+    "when the feedback has been submitted."
 )
 
 # ── Rate limiting (module-level dict, shared within a single server process) ──
@@ -201,6 +225,31 @@ def check_rate_limit(session_id: str) -> bool:
     return True
 
 
+# ── GitHub feedback ───────────────────────────────────────────────────────────
+
+def _create_github_issue(feedback_text: str) -> dict:
+    try:
+        token = st.secrets["GITHUB_TOKEN"]
+    except KeyError:
+        return {"success": False, "error": "GITHUB_TOKEN not configured in secrets"}
+
+    title = feedback_text[:72] + ("..." if len(feedback_text) > 72 else "")
+    body = f"## User Feedback\n\n{feedback_text}\n\n---\n*Submitted via RiverScout chatbot*"
+    resp = requests.post(
+        "https://api.github.com/repos/MaximumPwr/scout-chat/issues",
+        json={"title": title, "body": body, "labels": ["feedback"]},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        timeout=10,
+    )
+    if resp.status_code == 201:
+        return {"success": True, "issue_number": resp.json().get("number")}
+    return {"success": False, "error": f"GitHub API error {resp.status_code}"}
+
+
 # ── Tool dispatch ─────────────────────────────────────────────────────────────
 
 def _dispatch_tool(name: str, tool_input: dict) -> str:
@@ -217,6 +266,8 @@ def _dispatch_tool(name: str, tool_input: dict) -> str:
     elif name == "resolve_river_id":
         resolved = resolve_river_id(tool_input["query"])
         result = {"river_id": resolved, "found": resolved is not None}
+    elif name == "send_feedback":
+        result = _create_github_issue(tool_input["feedback_text"])
     else:
         result = {"error": f"Unknown tool: {name!r}"}
     return json.dumps(result)
@@ -337,6 +388,10 @@ with st.sidebar:
         f"- {r['river_name']}{_qualifier(r['section'])}" for r in river_list
     ))
     st.divider()
+    st.markdown(
+        "💬 **Feedback?** Type *feedback* in the chat to share suggestions "
+        "or report a problem."
+    )
     st.caption("Rate limit: 20 requests / hour per session.")
 
 # ── Session state ─────────────────────────────────────────────────────────────
