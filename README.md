@@ -67,6 +67,21 @@ Tool inputs accept both canonical IDs (e.g., `pemi_eb`) and natural-language ali
 
 ---
 
+## MCP Server (Gemini Enterprise, Claude, any MCP client)
+
+`mcp_server.py` exposes the same six tools over MCP's Streamable HTTP transport.
+It is independent of the Streamlit app and has its own dependency file.
+
+```bash
+pip install -r requirements-mcp.txt   # requires Python >= 3.10
+python mcp_server.py                  # http://localhost:8080/mcp  (health: /health)
+```
+
+Deploy to Google Cloud Run with `PROJECT_ID=your-project ./deploy.sh`, then register
+`https://<your-service>.run.app/mcp` as a Custom MCP Server in Gemini Enterprise.
+
+---
+
 ## Quick Start (Local Development)
 
 ### 1. Clone
