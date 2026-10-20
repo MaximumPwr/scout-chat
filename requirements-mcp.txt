@@ -1,0 +1,5 @@
+# Dependencies for the MCP server (mcp_server.py) only.
+# Kept separate from requirements.txt so the Streamlit app's install is unchanged.
+# The mcp SDK requires Python >= 3.10.
+mcp>=1.10,<2
+requests>=2.31

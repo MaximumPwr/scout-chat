@@ -1,0 +1,11 @@
+# Keep secrets and local cruft out of the container image.
+.git
+.github
+.claude
+.streamlit
+.env
+*.md
+__pycache__/
+*.py[cod]
+.venv/
+venv/
